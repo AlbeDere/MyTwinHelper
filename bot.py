@@ -12,13 +12,12 @@ from langchain_pinecone import PineconeVectorStore
 
 embeddings = OpenAIEmbeddings(openai_api_type=os.environ.get("OPENAI_API_KEY"))
 vectorstore = PineconeVectorStore(
-        index_name=os.environ["INDEX_NAME"], embedding=embeddings
-    )
+    index_name=os.environ["INDEX_NAME"], embedding=embeddings
+)
 retriever = vectorstore.as_retriever()
 
 llm = ChatOpenAI(verbose=True, temperature=0, model_name="gpt-4o-mini")
 
-# Contextualize question
 contextualize_q_system_prompt = (
     "Given a chat history and the latest user question "
     "which might reference context in the chat history, "
@@ -34,12 +33,10 @@ contextualize_q_prompt = ChatPromptTemplate.from_messages(
     ]
 )
 
-# Create history-aware retriever
 history_aware_retriever = create_history_aware_retriever(
     llm=llm, retriever=retriever, prompt=contextualize_q_prompt
 )
 
-# Answer question
 qa_system_prompt = (
     "You are a virtual assistant designed to answer questions specifically about Albert Derevski. "
     "Use the following pieces of retrieved context to answer the question, ensuring the response is relevant to Albert's "
@@ -57,45 +54,25 @@ qa_prompt = ChatPromptTemplate.from_messages(
     ]
 )
 
-# Create question-answering chain
 question_answer_chain = create_stuff_documents_chain(llm=llm, prompt=qa_prompt)
 
-# Combine retriever and QA chain into a retrieval-augmented generation (RAG) chain
 rag_chain = create_retrieval_chain(
     history_aware_retriever,
     question_answer_chain
 )
 
-# Usage
-chat_history = []  # Collect chat history here (a sequence of messages)
-query = "What is your professional experience?"
-response = rag_chain.invoke({"input": query, "chat_history": chat_history})
+chat_history = []  
 
-print(response['answer'])
-print("\n")
-# Append the interaction to chat history
-chat_history.append(HumanMessage(content=query))
-chat_history.append(AIMessage(content=response['answer']))
-print(chat_history)
-print("\n")
-# Second query
-query = "For how long have you worked in your current company?"
-response = rag_chain.invoke({"input": query, "chat_history": chat_history})
+print("Welcome! Ask me questions about Albert Derevski. Type 'exit' to quit.")
 
-print(response['answer'])  # Print the answer
-print("\n")
-# Append the interaction to chat history
-chat_history.append(HumanMessage(content=query))
-chat_history.append(AIMessage(content=response['answer']))
-print(chat_history)
-print("\n")
-query = "Repeat the question i just asked"
-response = rag_chain.invoke({"input": query, "chat_history": chat_history})
+while True:
+    query = input("You: ")
+    if query.lower() == "exit":
+        print("Goodbye!")
+        break
 
-print(response['answer'])  # Print the answer
-print("\n")
-# Append the interaction to chat history
-chat_history.append(HumanMessage(content=query),AIMessage(content=response['answer']))
-chat_history.append(AIMessage(content=response['answer']))
-print(chat_history)
-print("\n")
+    response = rag_chain.invoke({"input": query, "chat_history": chat_history})
+    print(f"Assistant: {response['answer']}")
+    
+    chat_history.append(HumanMessage(content=query))
+    chat_history.append(AIMessage(content=response['answer']))
